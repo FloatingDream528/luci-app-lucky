@@ -76,7 +76,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/${{ matrix.arch }}
-          find bin -type f -name "*.apk" -print -exec cp -v {} artifacts/${{ matrix.arch }}/ \;
+          find bin -type f \( \
+            -name "lucky-*.apk" -o \
+            -name "luci-app-lucky-*.apk" -o \
+            -name "luci-i18n-lucky-zh-cn-*.apk" \
+          \) -print -exec cp -v {} artifacts/${{ matrix.arch }}/ \;
           test -n "$(find artifacts/${{ matrix.arch }} -type f -name '*.apk' -print -quit)"
 
       - name: Upload APK artifact
