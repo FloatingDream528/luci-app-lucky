@@ -10,9 +10,9 @@ fi
 
 set --
 for pattern in \
-	"$PKG_DIR"/lucky_*.apk \
-	"$PKG_DIR"/luci-app-lucky_*.apk \
-	"$PKG_DIR"/luci-i18n-lucky-zh-cn_*.apk
+	"$PKG_DIR"/lucky-*.apk \
+	"$PKG_DIR"/luci-app-lucky-*.apk \
+	"$PKG_DIR"/luci-i18n-lucky-zh-cn-*.apk
 do
 	[ -e "$pattern" ] || continue
 	set -- "$@" "$pattern"
@@ -28,6 +28,7 @@ apk add --allow-untrusted "$@"
 
 /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 /etc/init.d/uhttpd reload >/dev/null 2>&1 || true
+/usr/bin/lucky-update >/dev/null 2>&1 || true
 /etc/init.d/lucky enable >/dev/null 2>&1 || true
 /etc/init.d/lucky restart >/dev/null 2>&1 || /etc/init.d/lucky start >/dev/null 2>&1 || true
 

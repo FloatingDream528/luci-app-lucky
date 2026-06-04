@@ -1,0 +1,62 @@
+#!/bin/sh
+set -eu
+
+LUCKY_VERSION="3.0.0"
+LUCKY_RELEASE_BASE="https://release.66666.host/v3.0.0beta5/3.0.0_lucky"
+INSTALL_PATH="/usr/bin/lucky"
+
+detect_arch() {
+	cputype="$(uname -ms | tr ' ' '_' | tr 'A-Z' 'a-z')"
+	cpucore=""
+
+	[ -n "$(echo "$cputype" | grep -E 'linux.*armv.*')" ] && cpucore="armv5"
+	[ -n "$(echo "$cputype" | grep -E 'linux.*armv6.*')" ] && cpucore="armv6"
+	[ -n "$(echo "$cputype" | grep -E 'linux.*armv7.*')" ] && cpucore="armv7"
+	[ -n "$(echo "$cputype" | grep -E 'linux.*aarch64.*|linux.*armv8.*')" ] && cpucore="arm64"
+	[ -n "$(echo "$cputype" | grep -E 'linux.*86.*')" ] && cpucore="i386"
+	[ -n "$(echo "$cputype" | grep -E 'linux.*86_64.*')" ] && cpucore="x86_64"
+	[ -n "$(echo "$cputype" | grep -E 'linux.*riscv64.*')" ] && cpucore="riscv64"
+
+	if [ -n "$(echo "$cputype" | grep -E 'linux.*mips.*')" ]; then
+		mipstype="$(echo -n I | hexdump -o 2>/dev/null | awk '{ print substr($2,6,1); exit }')"
+		[ "$mipstype" = "0" ] && cpucore="mips_softfloat" || cpucore="mipsle_softfloat"
+	fi
+
+	if [ -z "$cpucore" ]; then
+		echo "无法识别当前 CPU 架构: $cputype"
+		return 1
+	fi
+
+	echo "$cpucore"
+}
+
+download_file() {
+	url="$1"
+	output="$2"
+
+	if command -v curl >/dev/null 2>&1; then
+		curl -fL "$url" -o "$output"
+	elif command -v wget >/dev/null 2>&1; then
+		wget -O "$output" "$url"
+	else
+		echo "未找到 curl 或 wget，无法下载 Lucky 核心。"
+		return 1
+	fi
+}
+
+arch="$(detect_arch)"
+distfile="lucky_${LUCKY_VERSION}_Linux_${arch}.tar.gz"
+url="${LUCKY_RELEASE_BASE}/${distfile}"
+tmpdir="$(mktemp -d /tmp/lucky-update.XXXXXX)"
+
+cleanup() {
+	rm -rf "$tmpdir"
+}
+trap cleanup EXIT
+
+echo "下载 Lucky 核心: $url"
+download_file "$url" "$tmpdir/$distfile"
+tar -xzf "$tmpdir/$distfile" -C "$tmpdir" lucky
+install -m 0755 "$tmpdir/lucky" "$INSTALL_PATH"
+
+echo "Lucky 核心已安装到 $INSTALL_PATH"
