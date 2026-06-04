@@ -12,16 +12,38 @@ on:
       - "luci-app-lucky/Makefile"
       - ".github/workflows/build-apk.yml"
   workflow_dispatch:
+    inputs:
+      arch:
+        description: Build only one arch, or all
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - x86_64
+          - i386_pentium4
+          - aarch64_cortex-a53
+          - arm_cortex-a7_neon-vfpv4
+          - mips_24kc
+          - mipsel_24kc
+          - riscv64_riscv64
 
 permissions:
   contents: write
+
+concurrency:
+  group: lucky-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build ${{ matrix.arch }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    continue-on-error: true
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         arch:
           - x86_64
@@ -36,7 +58,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Skip unmatched manual arch
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.arch != 'all' && github.event.inputs.arch != matrix.arch
+        run: echo "Skip ${{ matrix.arch }}"
+
       - name: Build packages
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.arch == 'all' || github.event.inputs.arch == matrix.arch
         uses: openwrt/gh-action-sdk@v8
         env:
           ARCH: ${{ matrix.arch }}
@@ -44,6 +71,7 @@ jobs:
           PACKAGES: lucky luci-app-lucky
 
       - name: Collect APK files
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.arch == 'all' || github.event.inputs.arch == matrix.arch
         shell: bash
         run: |
           set -euo pipefail
@@ -52,6 +80,7 @@ jobs:
           test -n "$(find artifacts/${{ matrix.arch }} -type f -name '*.apk' -print -quit)"
 
       - name: Upload APK artifact
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.arch == 'all' || github.event.inputs.arch == matrix.arch
         uses: actions/upload-artifact@v4
         with:
           name: lucky-apk-${{ matrix.arch }}
@@ -76,11 +105,11 @@ jobs:
           version="$(awk -F ':=' '/^PKG_VERSION:=/ { print $2; exit }' lucky/Makefile)"
           release_dir="$(awk -F ':=' '/^LUCKY_RELEASE_DIR:=/ { print $2; exit }' lucky/Makefile)"
           if [ -z "$version" ]; then
-            echo "未能从 lucky/Makefile 读取 PKG_VERSION"
+            echo "Cannot read PKG_VERSION from lucky/Makefile"
             exit 1
           fi
           if [ -z "$release_dir" ]; then
-            echo "未能从 lucky/Makefile 读取 LUCKY_RELEASE_DIR"
+            echo "Cannot read LUCKY_RELEASE_DIR from lucky/Makefile"
             exit 1
           fi
           tag="lucky-${version}"
@@ -115,9 +144,9 @@ jobs:
           {
             echo "Lucky ${{ steps.version.outputs.version }} OpenWrt APK"
             echo
-            echo "核心包来源: ${{ steps.version.outputs.release_url }}"
+            echo "Core package source: ${{ steps.version.outputs.release_url }}"
             echo
-            echo "包含文件:"
+            echo "Files:"
             find release-upload -type f -name "*.apk" -printf "- %f\n" | sort
           } > release-notes.md
 
@@ -132,7 +161,7 @@ jobs:
           shopt -s nullglob
           files=(release-upload/*.apk)
           if [ "${#files[@]}" -eq 0 ]; then
-            echo "未找到可发布的 APK 文件"
+            echo "No APK files found for release"
             exit 1
           fi
 
