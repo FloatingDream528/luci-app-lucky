@@ -1,0 +1,151 @@
+name: Build Lucky APK
+
+on:
+  push:
+    paths:
+      - "lucky/Makefile"
+      - "luci-app-lucky/Makefile"
+      - ".github/workflows/build-apk.yml"
+  pull_request:
+    paths:
+      - "lucky/Makefile"
+      - "luci-app-lucky/Makefile"
+      - ".github/workflows/build-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - x86_64
+          - i386_pentium4
+          - aarch64_cortex-a53
+          - arm_cortex-a7_neon-vfpv4
+          - mips_24kc
+          - mipsel_24kc
+          - riscv64_riscv64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build packages
+        uses: openwrt/gh-action-sdk@v8
+        env:
+          ARCH: ${{ matrix.arch }}
+          FEEDNAME: lucky
+          PACKAGES: lucky luci-app-lucky
+
+      - name: Collect APK files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/${{ matrix.arch }}
+          find bin -type f -name "*.apk" -print -exec cp -v {} artifacts/${{ matrix.arch }}/ \;
+          test -n "$(find artifacts/${{ matrix.arch }} -type f -name '*.apk' -print -quit)"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lucky-apk-${{ matrix.arch }}
+          path: artifacts/${{ matrix.arch }}/*.apk
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read package version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(awk -F ':=' '/^PKG_VERSION:=/ { print $2; exit }' lucky/Makefile)"
+          release_dir="$(awk -F ':=' '/^LUCKY_RELEASE_DIR:=/ { print $2; exit }' lucky/Makefile)"
+          if [ -z "$version" ]; then
+            echo "未能从 lucky/Makefile 读取 PKG_VERSION"
+            exit 1
+          fi
+          if [ -z "$release_dir" ]; then
+            echo "未能从 lucky/Makefile 读取 LUCKY_RELEASE_DIR"
+            exit 1
+          fi
+          tag="lucky-${version}"
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "release_url=https://release.66666.host/${release_dir}/"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Download APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: lucky-apk-*
+          path: release-assets
+
+      - name: Normalize release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-upload
+          find release-assets -type f -name "*.apk" -print0 | while IFS= read -r -d '' file; do
+            artifact="$(basename "$(dirname "$file")")"
+            arch="${artifact#lucky-apk-}"
+            cp -v "$file" "release-upload/${arch}-$(basename "$file")"
+          done
+          test -n "$(find release-upload -type f -name '*.apk' -print -quit)"
+
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "Lucky ${{ steps.version.outputs.version }} OpenWrt APK"
+            echo
+            echo "核心包来源: ${{ steps.version.outputs.release_url }}"
+            echo
+            echo "包含文件:"
+            find release-upload -type f -name "*.apk" -printf "- %f\n" | sort
+          } > release-notes.md
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.version.outputs.tag }}
+          RELEASE_NAME: Lucky ${{ steps.version.outputs.version }} APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(release-upload/*.apk)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "未找到可发布的 APK 文件"
+            exit 1
+          fi
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" --title "$RELEASE_NAME" --notes-file release-notes.md
+            gh release upload "$TAG_NAME" "${files[@]}" --clobber
+          else
+            prerelease_args=()
+            if [[ "$TAG_NAME" == *beta* || "$TAG_NAME" == *alpha* || "$TAG_NAME" == *rc* ]]; then
+              prerelease_args=(--prerelease)
+            fi
+            gh release create "$TAG_NAME" "${files[@]}" \
+              --title "$RELEASE_NAME" \
+              --notes-file release-notes.md \
+              "${prerelease_args[@]}"
+          fi

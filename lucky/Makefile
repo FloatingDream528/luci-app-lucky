@@ -4,9 +4,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=lucky
-PKG_VERSION:=2.27.2
+PKG_VERSION:=3.0.0_beta5
 PKG_RELEASE:=1
 PKGARCH:=all 
+LUCKY_UPSTREAM_VERSION:=3.0.0
+LUCKY_RELEASE_DIR:=v3.0.0beta5/3.0.0_lucky
+LUCKY_RELEASE_BASE:=https://release.66666.host/$(LUCKY_RELEASE_DIR)
 LUCKY_CONF_DIR := /etc/config/lucky.daji
 LUCKY_TMP_BACKUP := /tmp/luckyconfdir
 
@@ -41,12 +44,16 @@ endif
 ifeq ($(ARCH),aarch64)
 	LUCKY_ARCH:=arm64
 endif
+ifeq ($(ARCH),riscv64)
+	LUCKY_ARCH:=riscv64
+endif
 
 PKG_LICENSE:=GPL-3.0-only
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=GDY666 <gdy666@foxmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
+LUCKY_DISTFILE:=$(PKG_NAME)_$(LUCKY_UPSTREAM_VERSION)_Linux_$(LUCKY_ARCH).tar.gz
 PKG_HASH:=skip
 
 include $(INCLUDE_DIR)/package.mk
@@ -55,7 +62,7 @@ define Package/$(PKG_NAME)
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=Lucky gdy
-	DEPENDS:=@(i386||x86_64||arm||aarch64||mipsel||mips)
+	DEPENDS:=@(i386||x86_64||arm||aarch64||riscv64||mipsel||mips)
 	URL:=https://github.com/gdy666/lucky
 endef
 
@@ -67,8 +74,10 @@ endef
 
 
 define Build/Prepare
-	[ ! -f $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz ] && wget https://github.com/gdy666/lucky/releases/download/v$(PKG_VERSION)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz -O $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz
-	tar -xzvf $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz -C $(PKG_BUILD_DIR)
+	mkdir -p $(PKG_BUILD_DIR)
+	[ -n "$(LUCKY_ARCH)" ] || { echo "Unsupported Lucky arch: ARCH=$(ARCH) BOARD=$(BOARD)"; exit 1; }
+	[ -f $(PKG_BUILD_DIR)/$(LUCKY_DISTFILE) ] || wget -O $(PKG_BUILD_DIR)/$(LUCKY_DISTFILE) $(LUCKY_RELEASE_BASE)/$(LUCKY_DISTFILE)
+	tar -xzvf $(PKG_BUILD_DIR)/$(LUCKY_DISTFILE) -C $(PKG_BUILD_DIR)
 endef
 
 
