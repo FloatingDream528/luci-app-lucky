@@ -36,6 +36,8 @@ Release 只发布一份通用 APK，不再按 CPU 架构分别编译多个包。
 
 ## 在路由器上安装 APK
 
+不要使用 LuCI 的“上传软件包”按钮安装 Release 中的 APK。该入口执行的是 `apk add /tmp/upload.apk`，不会带 `--allow-untrusted`，第三方未信任签名包会报 `UNTRUSTED signature`。
+
 把 Release 中的 APK 上传到路由器同一个目录，然后执行：
 
 ```sh

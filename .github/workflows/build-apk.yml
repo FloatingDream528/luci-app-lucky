@@ -104,6 +104,17 @@ jobs:
             echo "The APK downloads the matching Lucky core for the device CPU at install/start time."
             echo "Core package source: ${{ steps.version.outputs.release_url }}"
             echo
+            echo "Install from SSH, not from the LuCI upload dialog:"
+            echo
+            echo '```sh'
+            echo 'apk add --allow-untrusted ./lucky-*.apk ./luci-app-lucky-*.apk ./luci-i18n-lucky-zh-cn-*.apk'
+            echo '/etc/init.d/rpcd reload'
+            echo '/etc/init.d/uhttpd reload'
+            echo '/etc/init.d/lucky restart'
+            echo '```'
+            echo
+            echo "LuCI package upload runs apk add without --allow-untrusted, so unsigned third-party APK files show UNTRUSTED signature there."
+            echo
             echo "Files:"
             find release-upload -type f -name "*.apk" -printf "- %f\n" | sort
           } > release-notes.md
