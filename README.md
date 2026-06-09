@@ -2,9 +2,9 @@
 
 这是 Lucky 的 OpenWrt LuCI 插件和 Lucky 本体 x86_64 APK 打包源码。
 
-当前分支适配 Lucky `3.0.0 beta5`，Lucky 核心包来自：
+每次 GitHub Actions 编译前都会自动从 Lucky 发布站选择最新版本，Lucky 核心包来自：
 
-`https://release.66666.host/v3.0.0beta5/3.0.0_lucky/`
+`https://release.66666.host/`
 
 这里的 APK 指 OpenWrt 新版包管理器使用的 `.apk` 包格式，不是 Android APK。
 
@@ -12,7 +12,7 @@
 
 Release 只发布 x86_64 机型使用的 APK。
 
-`lucky` 包内直接打包 `x86_64` Lucky 核心到 `/usr/bin/lucky`。安装或启动服务时不会再下载核心。
+`scripts/prepare-latest-lucky.sh` 会在编译前解析最新 Lucky 版本、更新包版本、计算 x86_64 核心包 sha256，并把 `x86_64` Lucky 核心直接打包到 `/usr/bin/lucky`。安装或启动服务时不会再下载核心。
 
 内置的 Lucky 核心架构：
 
@@ -22,9 +22,9 @@ Release 只发布 x86_64 机型使用的 APK。
 
 仓库内置 `.github/workflows/build-apk.yml`。
 
-当 `lucky/`、`luci-app-lucky/` 或 workflow 更新并推送到 GitHub 后，GitHub Actions 会使用 OpenWrt Snapshot x86_64 SDK 编译 APK。
+当 `lucky/`、`luci-app-lucky/`、`scripts/` 或 workflow 更新并推送到 GitHub 后，GitHub Actions 会使用 OpenWrt Snapshot x86_64 SDK 编译 APK。
 
-编译完成后，工作流会读取 `lucky/Makefile` 中的 `PKG_VERSION`，创建或更新名为 `lucky-${PKG_VERSION}` 的 GitHub Release，并上传 APK 文件。
+编译完成后，工作流会用自动解析到的 Lucky 版本创建或更新名为 `lucky-${PKG_VERSION}` 的 GitHub Release，并上传 APK 文件。
 
 ## 在路由器上安装 APK
 

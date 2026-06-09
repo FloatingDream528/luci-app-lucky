@@ -5,11 +5,13 @@ on:
     paths:
       - "lucky/**"
       - "luci-app-lucky/**"
+      - "scripts/**"
       - ".github/workflows/build-apk.yml"
   pull_request:
     paths:
       - "lucky/**"
       - "luci-app-lucky/**"
+      - "scripts/**"
       - ".github/workflows/build-apk.yml"
   workflow_dispatch:
 
@@ -25,10 +27,36 @@ jobs:
     name: Build x86_64 APK
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      core_arch: ${{ steps.meta.outputs.core_arch }}
+      upstream_version: ${{ steps.meta.outputs.upstream_version }}
+      release_url: ${{ steps.meta.outputs.release_url }}
+      source_url: ${{ steps.meta.outputs.source_url }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Prepare latest Lucky core
+        shell: bash
+        run: bash scripts/prepare-latest-lucky.sh
+
+      - name: Export release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          source .lucky-release.env
+          {
+            echo "version=${PKG_VERSION}"
+            echo "tag=lucky-${PKG_VERSION}"
+            echo "core_arch=${LUCKY_CORE_ARCH}"
+            echo "upstream_version=${LUCKY_UPSTREAM_VERSION}"
+            echo "release_url=${LUCKY_RELEASE_ROOT}/${LUCKY_RELEASE_DIR}/"
+            echo "source_url=${LUCKY_SOURCE_URL}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build packages
         uses: openwrt/gh-action-sdk@v8
@@ -42,6 +70,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
+          cp -v .lucky-release.env artifacts/
           find bin -type f \( \
             -name "lucky-*.apk" -o \
             -name "luci-app-lucky-*.apk" -o \
@@ -53,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lucky-x86_64-apk
-          path: artifacts/*.apk
+          path: artifacts/*
           if-no-files-found: error
 
   release:
@@ -66,34 +95,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Read package version
-        id: version
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(awk -F ':=' '/^PKG_VERSION:=/ { print $2; exit }' lucky/Makefile)"
-          release_dir="$(awk -F ':=' '/^LUCKY_RELEASE_DIR:=/ { print $2; exit }' lucky/Makefile)"
-          core_arch="$(awk -F ':=' '/^LUCKY_CORE_ARCH:=/ { print $2; exit }' lucky/Makefile)"
-          if [ -z "$version" ]; then
-            echo "Cannot read PKG_VERSION from lucky/Makefile"
-            exit 1
-          fi
-          if [ -z "$release_dir" ]; then
-            echo "Cannot read LUCKY_RELEASE_DIR from lucky/Makefile"
-            exit 1
-          fi
-          if [ -z "$core_arch" ]; then
-            echo "Cannot read LUCKY_CORE_ARCH from lucky/Makefile"
-            exit 1
-          fi
-          tag="lucky-${version}"
-          {
-            echo "version=$version"
-            echo "tag=$tag"
-            echo "core_arch=$core_arch"
-            echo "release_url=https://release.66666.host/${release_dir}/"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Download APK artifacts
         uses: actions/download-artifact@v4
         with:
@@ -105,10 +106,10 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "Lucky ${{ steps.version.outputs.version }} x86_64 OpenWrt APK"
+            echo "Lucky ${{ needs.build.outputs.version }} x86_64 OpenWrt APK"
             echo
-            echo "lucky 包已内置 ${{ steps.version.outputs.core_arch }} Lucky 核心，安装或启动时不会再下载核心。"
-            echo "核心来源: ${{ steps.version.outputs.release_url }}"
+            echo "lucky 包已内置 ${{ needs.build.outputs.core_arch }} Lucky 核心，安装或启动时不会再下载核心。"
+            echo "核心来源: ${{ needs.build.outputs.source_url }}"
             echo
             echo "请从 SSH 安装，不要使用 LuCI 上传软件包入口："
             echo
@@ -128,8 +129,8 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ steps.version.outputs.tag }}
-          RELEASE_NAME: Lucky ${{ steps.version.outputs.version }} x86_64 APK
+          TAG_NAME: ${{ needs.build.outputs.tag }}
+          RELEASE_NAME: Lucky ${{ needs.build.outputs.version }} x86_64 APK
         shell: bash
         run: |
           set -euo pipefail
