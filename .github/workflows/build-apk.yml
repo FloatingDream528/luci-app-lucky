@@ -76,6 +76,11 @@ jobs:
             -name "luci-app-lucky-*.apk" -o \
             -name "luci-i18n-lucky-zh-cn-*.apk" \
           \) -print -exec cp -v {} artifacts/ \;
+          for apk in artifacts/*.apk; do
+            name="$(basename "$apk")"
+            clean_name="$(printf '%s' "$name" | sed -E 's/-r[0-9]+(\.apk)$/\1/')"
+            [ "$name" = "$clean_name" ] || mv -v "$apk" "artifacts/$clean_name"
+          done
           test -n "$(find artifacts -type f -name '*.apk' -print -quit)"
 
       - name: Upload APK artifact
@@ -106,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "Lucky ${{ needs.build.outputs.version }} x86_64 OpenWrt APK"
+            echo "Lucky ${{ needs.build.outputs.version }}"
             echo
             echo "lucky 包已内置 ${{ needs.build.outputs.core_arch }} Lucky 核心，安装或启动时不会再下载核心。"
             echo "核心来源: ${{ needs.build.outputs.source_url }}"
@@ -130,7 +135,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ needs.build.outputs.tag }}
-          RELEASE_NAME: Lucky ${{ needs.build.outputs.version }} x86_64 APK
+          RELEASE_NAME: Lucky ${{ needs.build.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
