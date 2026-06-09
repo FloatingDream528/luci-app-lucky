@@ -5,9 +5,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=lucky
 PKG_VERSION:=3.0.0_beta5
-PKG_RELEASE:=1
-PKGARCH:=all 
+PKG_RELEASE:=2
 LUCKY_UPSTREAM_VERSION:=3.0.0
+LUCKY_CORE_ARCH:=x86_64
 LUCKY_RELEASE_DIR:=v3.0.0beta5/3.0.0_lucky
 LUCKY_RELEASE_BASE:=https://release.66666.host/$(LUCKY_RELEASE_DIR)
 LUCKY_CONF_DIR := /etc/config/lucky.daji
@@ -18,6 +18,8 @@ PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=GDY666 <gdy666@foxmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
+PKG_SOURCE:=lucky_$(LUCKY_UPSTREAM_VERSION)_Linux_$(LUCKY_CORE_ARCH).tar.gz
+PKG_SOURCE_URL:=$(LUCKY_RELEASE_BASE)
 PKG_HASH:=skip
 
 include $(INCLUDE_DIR)/package.mk
@@ -38,7 +40,10 @@ endef
 
 
 define Build/Prepare
+	rm -rf $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)
+	$(TAR) -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR)
+	test -x $(PKG_BUILD_DIR)/lucky
 endef
 
 
@@ -54,7 +59,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin/
 	$(INSTALL_DIR) $(1)/etc/init.d/
 	$(INSTALL_DIR) $(1)/etc/config/
-	$(INSTALL_BIN) ./files/lucky-update $(1)/usr/bin/lucky-update
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/lucky $(1)/usr/bin/lucky
 	$(INSTALL_BIN) ./files/lucky.init $(1)/etc/init.d/lucky
 	$(INSTALL_CONF) $(CURDIR)/files/luckyuci $(1)/etc/config/lucky
 endef
@@ -62,7 +67,6 @@ endef
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] && exit 0
-/usr/bin/lucky-update || true
 /etc/init.d/lucky enable >/dev/null 2>&1 || true
 exit 0
 endef

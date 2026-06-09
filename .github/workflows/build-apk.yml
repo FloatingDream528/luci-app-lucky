@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build universal APK
+    name: Build x86_64 APK
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -52,7 +52,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lucky-universal-apk
+          name: lucky-x86_64-apk
           path: artifacts/*.apk
           if-no-files-found: error
 
@@ -73,6 +73,7 @@ jobs:
           set -euo pipefail
           version="$(awk -F ':=' '/^PKG_VERSION:=/ { print $2; exit }' lucky/Makefile)"
           release_dir="$(awk -F ':=' '/^LUCKY_RELEASE_DIR:=/ { print $2; exit }' lucky/Makefile)"
+          core_arch="$(awk -F ':=' '/^LUCKY_CORE_ARCH:=/ { print $2; exit }' lucky/Makefile)"
           if [ -z "$version" ]; then
             echo "Cannot read PKG_VERSION from lucky/Makefile"
             exit 1
@@ -81,17 +82,22 @@ jobs:
             echo "Cannot read LUCKY_RELEASE_DIR from lucky/Makefile"
             exit 1
           fi
+          if [ -z "$core_arch" ]; then
+            echo "Cannot read LUCKY_CORE_ARCH from lucky/Makefile"
+            exit 1
+          fi
           tag="lucky-${version}"
           {
             echo "version=$version"
             echo "tag=$tag"
+            echo "core_arch=$core_arch"
             echo "release_url=https://release.66666.host/${release_dir}/"
           } >> "$GITHUB_OUTPUT"
 
       - name: Download APK artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lucky-universal-apk
+          name: lucky-x86_64-apk
           path: release-upload
 
       - name: Prepare release notes
@@ -99,12 +105,12 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "Lucky ${{ steps.version.outputs.version }} universal OpenWrt APK"
+            echo "Lucky ${{ steps.version.outputs.version }} x86_64 OpenWrt APK"
             echo
-            echo "The APK downloads the matching Lucky core for the device CPU at install/start time."
-            echo "Core package source: ${{ steps.version.outputs.release_url }}"
+            echo "lucky 包已内置 ${{ steps.version.outputs.core_arch }} Lucky 核心，安装或启动时不会再下载核心。"
+            echo "核心来源: ${{ steps.version.outputs.release_url }}"
             echo
-            echo "Install from SSH, not from the LuCI upload dialog:"
+            echo "请从 SSH 安装，不要使用 LuCI 上传软件包入口："
             echo
             echo '```sh'
             echo 'apk add --allow-untrusted ./lucky-*.apk ./luci-app-lucky-*.apk ./luci-i18n-lucky-zh-cn-*.apk'
@@ -113,7 +119,7 @@ jobs:
             echo '/etc/init.d/lucky restart'
             echo '```'
             echo
-            echo "LuCI package upload runs apk add without --allow-untrusted, so unsigned third-party APK files show UNTRUSTED signature there."
+            echo "LuCI 上传软件包入口执行 apk add 时不会带 --allow-untrusted，第三方未信任签名包会报 UNTRUSTED signature。"
             echo
             echo "Files:"
             find release-upload -type f -name "*.apk" -printf "- %f\n" | sort
@@ -123,7 +129,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ steps.version.outputs.tag }}
-          RELEASE_NAME: Lucky ${{ steps.version.outputs.version }} Universal APK
+          RELEASE_NAME: Lucky ${{ steps.version.outputs.version }} x86_64 APK
         shell: bash
         run: |
           set -euo pipefail

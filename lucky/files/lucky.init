@@ -32,9 +32,9 @@ log_output() {
 }
 
 lucky_run() {
-	# 如果安装通用 APK 时没有成功下载核心，启动服务时再尝试下载一次。
 	if [ ! -x "$PROG" ]; then
-		/usr/bin/lucky-update || return 1
+		log_output "未找到 Lucky 核心: $PROG"
+		return 1
 	fi
 
 	if [ -s "$UCI_CONF" ]; then
