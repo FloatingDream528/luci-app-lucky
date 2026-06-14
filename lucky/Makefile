@@ -47,6 +47,9 @@ define Package/$(PKG_NAME)/conffiles
 /etc/config/lucky
 endef
 
+define Build/Compile
+endef
+
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin/
 	$(INSTALL_DIR) $(1)/etc/init.d/
