@@ -1,7 +1,7 @@
 # luci-app-lucky (APK Build)
 
-[![Build Lucky APK](https://github.com/FloatingDream528/luci-app-lucky-apk/actions/workflows/build-apk.yml/badge.svg)](https://github.com/FloatingDream528/luci-app-lucky-apk/actions/workflows/build-apk.yml)
-[![Latest Release](https://img.shields.io/github/v/release/FloatingDream528/luci-app-lucky-apk?color=success&label=Latest%20Release)](https://github.com/FloatingDream528/luci-app-lucky-apk/releases)
+[![Build Lucky APK](https://github.com/FloatingDream528/luci-app-lucky/actions/workflows/build-apk.yml/badge.svg)](https://github.com/FloatingDream528/luci-app-lucky/actions/workflows/build-apk.yml)
+[![Latest Release](https://img.shields.io/github/v/release/FloatingDream528/luci-app-lucky?color=success&label=Latest%20Release)](https://github.com/FloatingDream528/luci-app-lucky/releases)
 [![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 
 这是 [Lucky](https://github.com/gdy666/lucky) 的 OpenWrt LuCI 控制面板以及 Lucky 预编译核心的打包源码库。专门针对采用全新 `apk` 包管理器的 OpenWrt 系统环境设计。
@@ -35,7 +35,7 @@
 
 ### 正确的 SSH 安装步骤：
 
-1. 到 [Releases 页面](https://github.com/FloatingDream528/luci-app-lucky-apk/releases) 下载符合你路由器架构的 `.zip` 压缩包。
+1. 到 [Releases 页面](https://github.com/FloatingDream528/luci-app-lucky/releases) 下载符合你路由器架构的 `.zip` 压缩包。
 2. 解压该 Zip，你会得到对应架构的数个 `.apk` 文件。
 3. 通过 WinSCP / MobaXterm 等工具，将解压出的所有 `.apk` 文件上传到路由器的 `/tmp/` 目录下。
 4. SSH 登录路由器终端，执行以下命令进行安装：
