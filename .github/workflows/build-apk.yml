@@ -30,11 +30,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86_64, aarch64, arm_cortex-a7_neon-vfpv4, mips_24kc, mipsel_24kc, i386_pentium4]
+        arch: [x86_64, aarch64_generic, arm_cortex-a7_neon-vfpv4, mips_24kc, mipsel_24kc, i386_pentium4]
         include:
           - arch: x86_64
             core_arch: x86_64
-          - arch: aarch64
+          - arch: aarch64_generic
             core_arch: arm64
           - arch: arm_cortex-a7_neon-vfpv4
             core_arch: armv7
