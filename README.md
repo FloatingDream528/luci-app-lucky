@@ -1,7 +1,7 @@
 # luci-app-lucky (APK Build)
 
 [![Build Lucky APK](https://github.com/FloatingDream528/luci-app-lucky/actions/workflows/build-apk.yml/badge.svg)](https://github.com/FloatingDream528/luci-app-lucky/actions/workflows/build-apk.yml)
-[![Latest Release](https://img.shields.io/github/v/release/FloatingDream528/luci-app-lucky?color=success&label=Latest%20Release)](https://github.com/FloatingDream528/luci-app-lucky/releases)
+[![Latest Release](https://img.shields.io/github/v/release/FloatingDream528/luci-app-lucky?include_prereleases&color=success&label=Latest%20Release)](https://github.com/FloatingDream528/luci-app-lucky/releases)
 [![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 
 这是 [Lucky](https://github.com/gdy666/lucky) 的 OpenWrt LuCI 控制面板以及 Lucky 预编译核心的打包源码库。专门针对采用全新 `apk` 包管理器的 OpenWrt 系统环境设计。
