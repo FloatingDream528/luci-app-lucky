@@ -90,26 +90,22 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
           cp -v .lucky-release.env artifacts/
+          
+          arch="${{ matrix.arch }}"
+          # 创建基于架构的子目录，并在上传artifact时保留结构
+          mkdir -p "artifacts/$arch"
+          
           find bin -type f \( \
             -name "lucky-*.apk" -o \
             -name "luci-app-lucky-*.apk" -o \
             -name "luci-i18n-lucky-zh-cn-*.apk" \
-          \) -print -exec cp -v {} artifacts/ \;
-          for apk in artifacts/*.apk; do
+          \) -print -exec cp -v {} "artifacts/$arch/" \;
+          
+          for apk in artifacts/$arch/*.apk; do
             name="$(basename "$apk")"
             clean_name="$(printf '%s' "$name" | sed -E 's/-r[0-9]+(\.apk)$/\1/')"
             
-            # Add architecture prefix to the file to avoid overwriting files from other architectures in the release
-            arch="${{ matrix.arch }}"
-            if [[ "$clean_name" == "luci-app-lucky"* ]] || [[ "$clean_name" == "luci-i18n-lucky"* ]]; then
-               # Since luci packages are 'all' arch, we append the specific architecture to differentiate them if needed,
-               # or handle them so they don't overwrite each other. Let's prepend arch to all apk files
-               final_name="${arch}_${clean_name}"
-            else
-               final_name="${arch}_${clean_name}"
-            fi
-            
-            mv -v "$apk" "artifacts/$final_name"
+            [ "$name" = "$clean_name" ] || mv -v "$apk" "artifacts/$arch/$clean_name"
           done
           test -n "$(find artifacts -type f -name '*.apk' -print -quit)"
 
@@ -137,6 +133,22 @@ jobs:
           pattern: lucky-*-apk
           merge-multiple: true
 
+      - name: Archive architecture folders
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-upload
+          for dir in */ ; do
+            # Remove trailing slash
+            arch_dir="${dir%/}"
+            if [ -d "$arch_dir" ]; then
+              echo "Zipping architecture: $arch_dir"
+              zip -r "lucky-${{ needs.build.outputs.version }}-${arch_dir}.zip" "$arch_dir"
+              # Optional: You can remove the original apk files if you only want to release the zip
+              # rm -rf "$arch_dir"
+            fi
+          done
+
       - name: Prepare release notes
         shell: bash
         run: |
@@ -150,7 +162,7 @@ jobs:
             echo "请从 SSH 安装，不要使用 LuCI 上传软件包入口："
             echo
             echo '```sh'
-            echo 'apk add --allow-untrusted ./<架构>_lucky-*.apk ./<架构>_luci-app-lucky-*.apk'
+            echo 'apk add --allow-untrusted ./lucky-*.apk ./luci-app-lucky-*.apk ./luci-i18n-lucky-zh-cn-*.apk'
             echo '/etc/init.d/rpcd reload'
             echo '/etc/init.d/uhttpd reload'
             echo '/etc/init.d/lucky restart'
@@ -159,7 +171,7 @@ jobs:
             echo "LuCI 上传软件包入口执行 apk add 时不会带 --allow-untrusted，第三方未信任签名包会报 UNTRUSTED signature。"
             echo
             echo "Files:"
-            find release-upload -type f -name "*.apk" -printf "- %f\n" | sort
+            find release-upload -type f -name "*.zip" -printf "- %f\n" | sort
           } > release-notes.md
 
       - name: Publish GitHub Release
@@ -171,9 +183,9 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(release-upload/*.apk)
+          files=(release-upload/*.zip)
           if [ "${#files[@]}" -eq 0 ]; then
-            echo "No APK files found for release"
+            echo "No Zip files found for release"
             exit 1
           fi
 
@@ -182,7 +194,7 @@ jobs:
             while IFS= read -r asset; do
               [ -n "$asset" ] || continue
               gh release delete-asset "$TAG_NAME" "$asset" --yes
-            done < <(gh release view "$TAG_NAME" --json assets --jq '.assets[].name | select(endswith(".apk"))')
+            done < <(gh release view "$TAG_NAME" --json assets --jq '.assets[].name | select(endswith(".zip"))')
             gh release upload "$TAG_NAME" "${files[@]}" --clobber
           else
             prerelease_args=()
