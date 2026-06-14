@@ -98,7 +98,18 @@ jobs:
           for apk in artifacts/*.apk; do
             name="$(basename "$apk")"
             clean_name="$(printf '%s' "$name" | sed -E 's/-r[0-9]+(\.apk)$/\1/')"
-            [ "$name" = "$clean_name" ] || mv -v "$apk" "artifacts/$clean_name"
+            
+            # Add architecture prefix to the file to avoid overwriting files from other architectures in the release
+            arch="${{ matrix.arch }}"
+            if [[ "$clean_name" == "luci-app-lucky"* ]] || [[ "$clean_name" == "luci-i18n-lucky"* ]]; then
+               # Since luci packages are 'all' arch, we append the specific architecture to differentiate them if needed,
+               # or handle them so they don't overwrite each other. Let's prepend arch to all apk files
+               final_name="${arch}_${clean_name}"
+            else
+               final_name="${arch}_${clean_name}"
+            fi
+            
+            mv -v "$apk" "artifacts/$final_name"
           done
           test -n "$(find artifacts -type f -name '*.apk' -print -quit)"
 
@@ -139,7 +150,7 @@ jobs:
             echo "请从 SSH 安装，不要使用 LuCI 上传软件包入口："
             echo
             echo '```sh'
-            echo 'apk add --allow-untrusted ./lucky-*.apk ./luci-app-lucky-*.apk ./luci-i18n-lucky-zh-cn-*.apk'
+            echo 'apk add --allow-untrusted ./<架构>_lucky-*.apk ./<架构>_luci-app-lucky-*.apk'
             echo '/etc/init.d/rpcd reload'
             echo '/etc/init.d/uhttpd reload'
             echo '/etc/init.d/lucky restart'
