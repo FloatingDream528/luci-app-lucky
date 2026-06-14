@@ -14,14 +14,10 @@ LUCI_TITLE:=LuCI Support for  lucky
 LUCI_DEPENDS:=+lucky +luci-compat
 LUCI_PKGARCH:=all
 
-
 define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) ./root/usr/bin/luckyarch $(1)/usr/bin/luckyarch
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
-
-
-
 
 # call BuildPackage - OpenWrt buildroot signature

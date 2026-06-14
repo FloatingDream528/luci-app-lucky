@@ -22,7 +22,7 @@ fi
 cd "$REPO_ROOT"
 
 fetch() {
-	curl -fsSL "$1"
+	curl --connect-timeout 10 --retry 3 --retry-delay 2 -fsSL "$1"
 }
 
 root_html="$(fetch "${RELEASE_ROOT}/")"
@@ -95,7 +95,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-curl -fsSL "$source_url" -o "$tmp_file"
+curl --connect-timeout 10 --retry 3 --retry-delay 2 -fsSL "$source_url" -o "$tmp_file"
 source_hash="$(sha256sum "$tmp_file" | awk '{ print $1 }')"
 
 export PACKAGE_VERSION="$package_version"
@@ -106,6 +106,18 @@ export SOURCE_HASH="$source_hash"
 export RELEASE_ROOT
 export SOURCE_URL="$source_url"
 export LUCKY_TAG="$latest_tag"
+
+# 校验远程 sha256 文件
+sha256_url="${source_url}.sha256"
+if remote_sha256="$(fetch "$sha256_url" 2>/dev/null | awk '{ print $1 }')" && [ -n "$remote_sha256" ]; then
+	if [ "$source_hash" != "$remote_sha256" ]; then
+		echo "错误: 下载的包 ($source_hash) 和远程校验和 ($remote_sha256) 不匹配！"
+		exit 1
+	fi
+	echo "校验和 ($source_hash) 匹配成功。"
+else
+	echo "警告: 未找到远程 sha256 校验文件 ($sha256_url)，跳过验证。"
+fi
 
 "$PYTHON_BIN" <<'PY'
 import os

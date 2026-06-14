@@ -24,9 +24,26 @@ concurrency:
 
 jobs:
   build:
-    name: Build x86_64 APK
+    name: Build ${{ matrix.arch }} APK
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64, arm_cortex-a7_neon-vfpv4, mips_24kc, mipsel_24kc, i386_pentium4]
+        include:
+          - arch: x86_64
+            core_arch: x86_64
+          - arch: aarch64
+            core_arch: arm64
+          - arch: arm_cortex-a7_neon-vfpv4
+            core_arch: armv7
+          - arch: mips_24kc
+            core_arch: mips_softfloat
+          - arch: mipsel_24kc
+            core_arch: mipsle_softfloat
+          - arch: i386_pentium4
+            core_arch: i386
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
@@ -41,6 +58,8 @@ jobs:
 
       - name: Prepare latest Lucky core
         shell: bash
+        env:
+          LUCKY_CORE_ARCH: ${{ matrix.core_arch }}
         run: bash scripts/prepare-latest-lucky.sh
 
       - name: Export release metadata
@@ -61,7 +80,7 @@ jobs:
       - name: Build packages
         uses: openwrt/gh-action-sdk@v8
         env:
-          ARCH: x86_64
+          ARCH: ${{ matrix.arch }}
           FEEDNAME: lucky
           PACKAGES: lucky luci-app-lucky
 
@@ -86,7 +105,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lucky-x86_64-apk
+          name: lucky-${{ matrix.arch }}-apk
           path: artifacts/*
           if-no-files-found: error
 
@@ -100,11 +119,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download APK artifacts
+      - name: Download all APK artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lucky-x86_64-apk
           path: release-upload
+          pattern: lucky-*-apk
+          merge-multiple: true
 
       - name: Prepare release notes
         shell: bash
@@ -113,8 +133,8 @@ jobs:
           {
             echo "Lucky ${{ needs.build.outputs.version }}"
             echo
-            echo "lucky 包已内置 ${{ needs.build.outputs.core_arch }} Lucky 核心，安装或启动时不会再下载核心。"
-            echo "核心来源: ${{ needs.build.outputs.source_url }}"
+            echo "lucky 包已内置对应架构的 Lucky 核心，安装或启动时不会再下载核心。"
+            echo "核心来源: ${{ needs.build.outputs.release_url }}"
             echo
             echo "请从 SSH 安装，不要使用 LuCI 上传软件包入口："
             echo

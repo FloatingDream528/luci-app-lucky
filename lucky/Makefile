@@ -36,9 +36,6 @@ define Package/$(PKG_NAME)/description
   Main functions of Lucky: ipv4/ipv6 portforward,ddns,IOT wake on lan ,reverse proxy and more...
 endef
 
-
-
-
 define Build/Prepare
 	rm -rf $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)
@@ -46,13 +43,8 @@ define Build/Prepare
 	test -x $(PKG_BUILD_DIR)/lucky
 endef
 
-
-
 define Package/$(PKG_NAME)/conffiles
 /etc/config/lucky
-endef
-
-define Build/Compile
 endef
 
 define Package/$(PKG_NAME)/install
