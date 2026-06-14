@@ -73,6 +73,7 @@ apk del lucky luci-i18n-lucky-zh-cn luci-app-lucky
 本插件对 LuCI 前端控制页面进行了现代化重构，支持实时状态轮询、配置热更新、自适应浅色/深色主题：
 
 ![](./previews/001.png)
+![](./previews/002.png)
 
 ## 致谢
 
