@@ -14,6 +14,8 @@ on:
       - "scripts/**"
       - ".github/workflows/build-apk.yml"
   workflow_dispatch:
+  schedule:
+    - cron: '0 16 * * *' # Run automatically at 16:00 UTC (00:00 Beijing time) every day
 
 permissions:
   contents: write
@@ -23,8 +25,76 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-update:
+    name: Check for Lucky Updates
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      latest_version: ${{ steps.check.outputs.latest_version }}
+    steps:
+      - name: Check latest version
+        id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          
+          # Fetch the latest version from the official site using Python
+          # Using the same logic as prepare-latest-lucky.sh but simplified
+          LATEST_TAG=$(python3 -c "
+          import urllib.request, re
+          try:
+              html = urllib.request.urlopen('https://release.66666.host/').read().decode('utf-8')
+              tags = re.findall(r'v\d+\.\d+\.\d+(?:beta\d+)?', html)
+              if not tags:
+                  raise SystemExit('No tags found')
+                  
+              versions = []
+              for tag in set(tags):
+                  match = re.match(r'^v(\d+)\.(\d+)\.(\d+)(?:beta(\d+))?$', tag)
+                  if match:
+                      major, minor, patch, beta = match.groups()
+                      stable_rank = 1 if beta is None else 0
+                      beta_number = int(beta or 0)
+                      versions.append(((int(major), int(minor), int(patch), stable_rank, beta_number), tag))
+              
+              if not versions:
+                  raise SystemExit('No valid versions found')
+                  
+              print(max(versions)[1])
+          except Exception as e:
+              print(f'Error fetching latest version: {e}')
+              raise SystemExit(1)
+          ")
+          
+          echo "Latest official version: $LATEST_TAG"
+          
+          # Fetch the latest release tag from our GitHub repository
+          # Using gh api to suppress errors if no releases exist yet
+          CURRENT_TAG=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name 2>/dev/null || echo "none")
+          echo "Current GitHub release: $CURRENT_TAG"
+          
+          # Format the official tag to match our repository's tag format (lucky-x.x.x)
+          # Assuming the repo tags are named like "lucky-3.0.0_beta6"
+          FORMATTED_TAG="lucky-${LATEST_TAG#v}"
+          FORMATTED_TAG="${FORMATTED_TAG/beta/_beta}"
+          
+          echo "Formatted target tag: $FORMATTED_TAG"
+          
+          if [ "$CURRENT_TAG" = "$FORMATTED_TAG" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "Version is up to date. No need to build."
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New version found or manual trigger. Building..."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "latest_version=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build ${{ matrix.arch }} APK
+    needs: check-update
+    if: needs.check-update.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
