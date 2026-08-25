@@ -60,10 +60,10 @@ tag_html="$(fetch "${RELEASE_ROOT}/${latest_tag}/")"
 # 增加不同lucky版本选择
 release_subdir="$(
     printf '%s\n' "$tag_html" |
-    grep -Eo "\./[0-9][^\"/]*_${VARIANT}/" |
-    sed 's#^\./##; s#/$##' |
-    grep -v '_docker$' |
-    head -n 1 || true
+		grep -Eo "\./[0-9][^\"/]*_${VARIANT}/" |
+        sed 's#^\./##; s#/$##' |
+        grep -v '_docker$' |
+        head -n 1 || true
 )"
 
 if [ -z "$release_subdir" ]; then
@@ -75,10 +75,10 @@ release_dir="${latest_tag}/${release_subdir}"
 release_html="$(fetch "${RELEASE_ROOT}/${release_dir}/")"
 # 增加不同lucky版本选择
 source_file="$(
-    printf '%s\n' "$release_html" |
-    grep -Eo "lucky_[^\"<> ]+_Linux_${CORE_ARCH}(_${VARIANT})?\\.tar\\.gz" |
-    sort -u |
-    head -n 1 || true
+	printf '%s\n' "$release_html" |
+		grep -Eo "lucky_[^\"<> ]+_Linux_${CORE_ARCH}(_${VARIANT})?\\.tar\\.gz" |
+    	sort -u |
+    	head -n 1 || true
 )"
 
 if [ -z "$source_file" ]; then
