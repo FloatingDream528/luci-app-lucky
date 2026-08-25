@@ -73,11 +73,12 @@ fi
 
 release_dir="${latest_tag}/${release_subdir}"
 release_html="$(fetch "${RELEASE_ROOT}/${release_dir}/")"
+# 增加不同lucky版本选择
 source_file="$(
-	printf '%s\n' "$release_html" |
-		grep -Eo "lucky_[^\"<> ]+_Linux_${CORE_ARCH}\\.tar\\.gz" |
-		sort -u |
-		head -n 1 || true
+    printf '%s\n' "$release_html" |
+    grep -Eo "lucky_[^\"<> ]+_Linux_${CORE_ARCH}(_${VARIANT})?\\.tar\\.gz" |
+    sort -u |
+    head -n 1 || true
 )"
 
 if [ -z "$source_file" ]; then
