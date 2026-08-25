@@ -3,6 +3,7 @@ set -euo pipefail
 
 RELEASE_ROOT="${LUCKY_RELEASE_ROOT:-https://release.66666.host}"
 CORE_ARCH="${LUCKY_CORE_ARCH:-x86_64}"
+VARIANT="${LUCKY_VARIANT:-lucky}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 PYTHON_BIN=""
@@ -56,12 +57,13 @@ print(max(versions)[1])
 ')"
 
 tag_html="$(fetch "${RELEASE_ROOT}/${latest_tag}/")"
+# 增加不同lucky版本选择
 release_subdir="$(
-	printf '%s\n' "$tag_html" |
-		grep -Eo '\./[0-9][^"/]*_lucky/' |
-		sed 's#^\./##; s#/$##' |
-		grep -v '_docker$' |
-		head -n 1 || true
+    printf '%s\n' "$tag_html" |
+    grep -Eo "\./[0-9][^\"/]*_${VARIANT}/" |
+    sed 's#^\./##; s#/$##' |
+    grep -v '_docker$' |
+    head -n 1 || true
 )"
 
 if [ -z "$release_subdir" ]; then
