@@ -85,9 +85,8 @@ if [ -z "$source_file" ]; then
 	echo "未在 ${RELEASE_ROOT}/${release_dir}/ 找到 Linux_${CORE_ARCH} 核心包。"
 	exit 1
 fi
-
-upstream_version="${source_file#lucky_}"
-upstream_version="${upstream_version%_Linux_${CORE_ARCH}.tar.gz}"
+# 修正 upstream_version 提取
+upstream_version="$(echo "$source_file" | sed -n 's/lucky_\([0-9]\+\.[0-9]\+\.[0-9]\+\)_.*/\1/p')"
 package_version="${latest_tag#v}"
 package_version="${package_version/beta/_beta}"
 source_url="${RELEASE_ROOT}/${release_dir}/${source_file}"
@@ -108,6 +107,7 @@ export SOURCE_HASH="$source_hash"
 export RELEASE_ROOT
 export SOURCE_URL="$source_url"
 export LUCKY_TAG="$latest_tag"
+export LUCKY_SOURCE_FILE="$source_file"
 
 # 校验远程 sha256 文件
 sha256_url="${source_url}.sha256"
@@ -151,6 +151,8 @@ update_assignments(
         "LUCKY_CORE_ARCH": os.environ["CORE_ARCH"],
         "LUCKY_RELEASE_DIR": os.environ["RELEASE_DIR"],
         "PKG_HASH": os.environ["SOURCE_HASH"],
+        "PKG_SOURCE": os.environ["LUCKY_SOURCE_FILE"],
+        "PKG_SOURCE_URL": os.environ["RELEASE_ROOT"] + "/" + os.environ["RELEASE_DIR"],
     },
 )
 
