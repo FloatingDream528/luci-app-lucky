@@ -152,7 +152,7 @@ update_assignments(
         "LUCKY_RELEASE_DIR": os.environ["RELEASE_DIR"],
         "PKG_HASH": os.environ["SOURCE_HASH"],
         "PKG_SOURCE": os.environ["LUCKY_SOURCE_FILE"],
-        "PKG_SOURCE_URL": os.environ["RELEASE_ROOT"] + "/" + os.environ["RELEASE_DIR"],
+        "PKG_SOURCE_URL": os.environ["RELEASE_ROOT"] + "/" + os.environ["RELEASE_DIR"] + "/",
     },
 )
 
