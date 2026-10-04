@@ -26,7 +26,7 @@ fetch() {
 }
 
 root_html="$(fetch "${RELEASE_ROOT}/")"
-version_list="$(printf '%s\n' "$root_html" | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+(beta[0-9]+)?' | sort -u || true)"
+version_list="$(printf '%s\n' "$root_html" | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+(beta[0-9]*)?' | sort -u || true)"
 
 if [ -z "$version_list" ]; then
 	echo "未从 ${RELEASE_ROOT}/ 解析到 Lucky 版本目录。"
@@ -37,7 +37,7 @@ latest_tag="$(printf '%s\n' "$version_list" | "$PYTHON_BIN" -c '
 import re
 import sys
 
-pattern = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:beta(\d+))?$")
+pattern = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:beta(\d*))?$")
 versions = []
 for line in sys.stdin:
     line = line.strip()
@@ -46,7 +46,7 @@ for line in sys.stdin:
         continue
     major, minor, patch, beta = match.groups()
     stable_rank = 1 if beta is None else 0
-    beta_number = int(beta or 0)
+    beta_number = int(beta or 0) if beta is not None else 0
     versions.append(((int(major), int(minor), int(patch), stable_rank, beta_number), line))
 
 if not versions:

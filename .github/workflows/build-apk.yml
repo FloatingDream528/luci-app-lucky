@@ -46,17 +46,17 @@ jobs:
           import sys, re
           try:
               html = sys.stdin.read()
-              tags = re.findall(r'v\d+\.\d+\.\d+(?:beta\d+)?', html)
+              tags = re.findall(r'v\d+\.\d+\.\d+(?:beta\d*)?', html)
               if not tags:
                   raise SystemExit('No tags found')
 
               versions = []
               for tag in set(tags):
-                  match = re.match(r'^v(\d+)\.(\d+)\.(\d+)(?:beta(\d+))?$', tag)
+                  match = re.match(r'^v(\d+)\.(\d+)\.(\d+)(?:beta(\d*))?$', tag)
                   if match:
                       major, minor, patch, beta = match.groups()
                       stable_rank = 1 if beta is None else 0
-                      beta_number = int(beta or 0)
+                      beta_number = int(beta or 0) if beta is not None else 0
                       versions.append(((int(major), int(minor), int(patch), stable_rank, beta_number), tag))
 
               if not versions:
