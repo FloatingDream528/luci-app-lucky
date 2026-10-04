@@ -27,7 +27,7 @@ concurrency:
 jobs:
   check-update:
     name: Check for Lucky Updates
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       latest_version: ${{ steps.check.outputs.latest_version }}
@@ -94,7 +94,7 @@ jobs:
     name: Build ${{ matrix.arch }} APK
     needs: check-update
     if: needs.check-update.outputs.should_build == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -147,7 +147,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Build packages
-        uses: openwrt/gh-action-sdk@v8
+        uses: openwrt/gh-action-sdk@v11
         env:
           ARCH: ${{ matrix.arch }}
           FEEDNAME: lucky
@@ -187,7 +187,7 @@ jobs:
 
   release:
     name: Publish Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     if: github.event_name != 'pull_request'
 
