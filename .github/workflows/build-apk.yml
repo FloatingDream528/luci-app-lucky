@@ -102,16 +102,22 @@ jobs:
         arch: [x86_64, aarch64_generic, arm_cortex-a7_neon-vfpv4, mips_24kc, mipsel_24kc, i386_pentium4]
         include:
           - arch: x86_64
+            sdk_arch: x86_64-25.12.6
             core_arch: x86_64
           - arch: aarch64_generic
+            sdk_arch: aarch64_generic-25.12.6
             core_arch: arm64
           - arch: arm_cortex-a7_neon-vfpv4
+            sdk_arch: arm_cortex-a7_neon-vfpv4-25.12.6
             core_arch: armv7
           - arch: mips_24kc
+            sdk_arch: mips_24kc-25.12.6
             core_arch: mips_softfloat
           - arch: mipsel_24kc
+            sdk_arch: mipsel_24kc-25.12.6
             core_arch: mipsle_softfloat
           - arch: i386_pentium4
+            sdk_arch: i386_pentium4-25.12.6
             core_arch: i386
     outputs:
       version: ${{ steps.meta.outputs.version }}
@@ -149,7 +155,7 @@ jobs:
       - name: Build packages
         uses: openwrt/gh-action-sdk@v11
         env:
-          ARCH: ${{ matrix.arch }}
+          ARCH: ${{ matrix.sdk_arch }}
           FEEDNAME: lucky
           PACKAGES: lucky luci-app-lucky
 
