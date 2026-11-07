@@ -1,1 +1,7 @@
 .lucky-release.env
+dl/
+lucky/dl/
+bin/
+artifacts/
+release-upload/
+release-notes.md

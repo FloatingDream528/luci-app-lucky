@@ -1,13 +1,29 @@
 {
 	"luci-app-lucky": {
-		"description": "Grant UCI access for luci-app-lucky",
+		"description": "Grant UCI and RPC access for luci-app-lucky",
 		"read": {
+			"file": {
+				"/usr/bin/lucky": [ "stat" ],
+				"/usr/bin/lucky -info": [ "exec" ],
+				"/usr/bin/lucky -baseConfInfo *": [ "exec" ],
+				"/usr/bin/luckyarch": [ "exec" ]
+			},
 			"ubus": {
+				"file": [ "exec", "stat" ],
 				"service": [ "list" ]
 			},
 			"uci": [ "lucky" ]
 		},
 		"write": {
+			"file": {
+				"/usr/bin/lucky": [ "exec" ],
+				"/usr/bin/lucky -setconf *": [ "exec" ],
+				"/etc/init.d/lucky": [ "exec" ],
+				"/etc/init.d/lucky *": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "exec" ]
+			},
 			"uci": [ "lucky" ]
 		}
 	}

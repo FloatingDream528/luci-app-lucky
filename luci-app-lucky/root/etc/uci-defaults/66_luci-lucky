@@ -7,8 +7,6 @@ uci -q batch <<-EOF >/dev/null
 	commit ucitrack
 EOF
 
-chmod +x /usr/bin/luckyarch
-rm -f /tmp/luci-indexcache* 2>/dev/null
-rm -f /tmp/luci-modulecache/* 2>/dev/null  # 针对OpenWrt 21.02+
-rm -f /tmp/luci-indexcache
-return 0
+chmod 0755 /usr/bin/luckyarch 2>/dev/null || true
+rm -rf /tmp/luci-indexcache* /tmp/luci-modulecache/ 2>/dev/null
+exit 0

@@ -18,7 +18,7 @@ on:
     - cron: '0 16 * * *' # Run automatically at 16:00 UTC (00:00 Beijing time) every day
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: lucky-apk-${{ github.ref }}
@@ -32,6 +32,13 @@ jobs:
       should_build: ${{ steps.check.outputs.should_build }}
       latest_version: ${{ steps.check.outputs.latest_version }}
     steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+          sparse-checkout-cone-mode: true
+
       - name: Check latest version
         id: check
         shell: bash
@@ -39,53 +46,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          
-          # Fetch the latest version from the official site using Python
-          # Using the same logic as prepare-latest-lucky.sh but simplified
-          LATEST_TAG=$(curl -fsSL --connect-timeout 15 --retry 5 --retry-delay 3 "https://release.66666.host/" | python3 -c "
-          import sys, re
-          try:
-              html = sys.stdin.read()
-              tags = re.findall(r'v\d+\.\d+\.\d+(?:beta\d*)?', html)
-              if not tags:
-                  raise SystemExit('No tags found')
 
-              versions = []
-              for tag in set(tags):
-                  match = re.match(r'^v(\d+)\.(\d+)\.(\d+)(?:beta(\d*))?$', tag)
-                  if match:
-                      major, minor, patch, beta = match.groups()
-                      stable_rank = 1 if beta is None else 0
-                      beta_number = int(beta or 0) if beta is not None else 0
-                      versions.append(((int(major), int(minor), int(patch), stable_rank, beta_number), tag))
+          bash scripts/prepare-latest-lucky.sh --check-only
 
-              if not versions:
-                  raise SystemExit('No valid versions found')
+          # Read outputs written by prepare-latest-lucky.sh --check-only
+          LATEST_TAG="$(grep '^latest_tag=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+          RELEASE_TAG="$(grep '^release_tag=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2-)"
 
-              print(max(versions)[1])
-          except Exception as e:
-              print(f'Error fetching latest version: {e}')
-              raise SystemExit(1)
-          ")
-          
           echo "Latest official version: $LATEST_TAG"
-          
-          # Fetch the latest release tag (including pre-releases) from our GitHub repository
-          CURRENT_TAG=$(gh api repos/${{ github.repository }}/releases --jq '.[0].tag_name' 2>/dev/null || echo "none")
-          echo "Current GitHub release: $CURRENT_TAG"
-          
-          # Format the official tag to match our repository's tag format (lucky-x.x.x)
-          # Assuming the repo tags are named like "lucky-3.0.0_beta6"
-          FORMATTED_TAG="lucky-${LATEST_TAG#v}"
-          FORMATTED_TAG="${FORMATTED_TAG/beta/_beta}"
-          
-          echo "Formatted target tag: $FORMATTED_TAG"
-          
-          if [ "$CURRENT_TAG" = "$FORMATTED_TAG" ] && [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "Version is up to date. No need to build."
+          echo "Target GitHub release tag: $RELEASE_TAG"
+
+          if [ "${{ github.event_name }}" = "schedule" ] && gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists. Skipping scheduled build."
             echo "should_build=false" >> "$GITHUB_OUTPUT"
           else
-            echo "New version found or manual trigger. Building..."
+            echo "New version found or manual/push trigger. Proceeding with build..."
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             echo "latest_version=$LATEST_TAG" >> "$GITHUB_OUTPUT"
           fi
@@ -122,10 +97,8 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
-      core_arch: ${{ steps.meta.outputs.core_arch }}
       upstream_version: ${{ steps.meta.outputs.upstream_version }}
       release_url: ${{ steps.meta.outputs.release_url }}
-      source_url: ${{ steps.meta.outputs.source_url }}
 
     steps:
       - name: Checkout
@@ -135,6 +108,7 @@ jobs:
         shell: bash
         env:
           LUCKY_CORE_ARCH: ${{ matrix.core_arch }}
+          LUCKY_TARGET_TAG: ${{ needs.check-update.outputs.latest_version }}
         run: bash scripts/prepare-latest-lucky.sh
 
       - name: Export release metadata
@@ -146,10 +120,8 @@ jobs:
           {
             echo "version=${PKG_VERSION}"
             echo "tag=lucky-${PKG_VERSION}"
-            echo "core_arch=${LUCKY_CORE_ARCH}"
             echo "upstream_version=${LUCKY_UPSTREAM_VERSION}"
             echo "release_url=${LUCKY_RELEASE_ROOT}/${LUCKY_RELEASE_DIR}/"
-            echo "source_url=${LUCKY_SOURCE_URL}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build packages
@@ -163,26 +135,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts
-          cp -v .lucky-release.env artifacts/
-          
           arch="${{ matrix.arch }}"
-          # 创建基于架构的子目录，并在上传artifact时保留结构
           mkdir -p "artifacts/$arch"
-          
+          cp -v .lucky-release.env artifacts/
+          cp -v scripts/install-apk.sh "artifacts/$arch/install-apk.sh"
+          chmod 0755 "artifacts/$arch/install-apk.sh"
+
           find bin -type f \( \
             -name "lucky-*.apk" -o \
             -name "luci-app-lucky-*.apk" -o \
             -name "luci-i18n-lucky-zh-cn-*.apk" \
           \) -print -exec cp -v {} "artifacts/$arch/" \;
-          
-          for apk in artifacts/$arch/*.apk; do
+
+          for apk in "artifacts/$arch"/*.apk; do
             name="$(basename "$apk")"
             clean_name="$(printf '%s' "$name" | sed -E 's/-r[0-9]+(\.apk)$/\1/')"
-            
             [ "$name" = "$clean_name" ] || mv -v "$apk" "artifacts/$arch/$clean_name"
           done
-          test -n "$(find artifacts -type f -name '*.apk' -print -quit)"
+
+          test -n "$(find "artifacts/$arch" -type f -name 'lucky-*.apk' -print -quit)"
+          test -n "$(find "artifacts/$arch" -type f -name 'luci-app-lucky-*.apk' -print -quit)"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -196,11 +168,10 @@ jobs:
     runs-on: ubuntu-24.04
     needs: build
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Download all APK artifacts
         uses: actions/download-artifact@v4
         with:
@@ -214,13 +185,10 @@ jobs:
           set -euo pipefail
           cd release-upload
           for dir in */ ; do
-            # Remove trailing slash
             arch_dir="${dir%/}"
             if [ -d "$arch_dir" ]; then
               echo "Zipping architecture: $arch_dir"
-              zip -r "lucky-${{ needs.build.outputs.version }}-${arch_dir}.zip" "$arch_dir"
-              # Optional: You can remove the original apk files if you only want to release the zip
-              # rm -rf "$arch_dir"
+              zip -j "lucky-${{ needs.build.outputs.version }}-${arch_dir}.zip" "$arch_dir"/*
             fi
           done
 
@@ -229,24 +197,31 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "Lucky ${{ needs.build.outputs.version }}"
+            echo "## Lucky ${{ needs.build.outputs.version }}"
             echo
-            echo "lucky 包已内置对应架构的 Lucky 核心，安装或启动时不会再下载核心。"
-            echo "核心来源: ${{ needs.build.outputs.release_url }}"
+            echo "- \`lucky\` 包已内置对应架构预编译核心，安装或启动服务时无需二次在线下载。"
+            echo "- \`luci-app-lucky\` 采用纯客户端 LuCI JS 构建，无需 \`luci-compat\` 兼容层。"
+            echo "- 核心来源: ${{ needs.build.outputs.release_url }}"
             echo
-            echo "请从 SSH 安装，不要使用 LuCI 上传软件包入口："
+            echo "### 方式一：SSH 一键自动识别架构在线安装"
             echo
             echo '```sh'
-            echo 'apk add --allow-untrusted ./lucky-*.apk ./luci-app-lucky-*.apk ./luci-i18n-lucky-zh-cn-*.apk'
-            echo '/etc/init.d/rpcd reload'
-            echo '/etc/init.d/uhttpd reload'
-            echo '/etc/init.d/lucky restart'
+            echo 'sh -c "$(wget -qO- https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/online-install.sh)"'
             echo '```'
             echo
-            echo "LuCI 上传软件包入口执行 apk add 时不会带 --allow-untrusted，第三方未信任签名包会报 UNTRUSTED signature。"
+            echo "### 方式二：下载对应架构 Zip 解压上传至 `/tmp` 后安装"
             echo
-            echo "Files:"
-            find release-upload -type f -name "*.zip" -printf "- %f\n" | sort
+            echo '```sh'
+            echo 'cd /tmp'
+            echo 'sh ./install-apk.sh'
+            echo '# 或手动执行：'
+            echo '# apk add --allow-untrusted ./lucky-*.apk ./luci-app-lucky-*.apk ./luci-i18n-lucky-zh-cn-*.apk'
+            echo '```'
+            echo
+            echo "> 注意：请勿使用 LuCI 网页「上传软件包」入口（该入口不携带 \`--allow-untrusted\`，会报 \`UNTRUSTED signature\`）。"
+            echo
+            echo "### Release Files"
+            find release-upload -type f -name "*.zip" -printf "- \`%f\`\n" | sort
           } > release-notes.md
 
       - name: Publish GitHub Release

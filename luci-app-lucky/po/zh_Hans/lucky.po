@@ -1,8 +1,13 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8"
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_CN\n"
 
-msgid "Main Program"
-msgstr "主程序"
+msgid "Lucky"
+msgstr "Lucky"
+
+msgid "IPv4/IPv6 port forward, DDNS, reverse proxy, Wake-on-LAN, IoT and more."
+msgstr "IPv4/IPv6 端口转发、动态域名 (DDNS)、HTTP/HTTPS 反向代理、网络唤醒与物联网工具集。"
 
 msgid "Main Program Information"
 msgstr "主程序信息"
@@ -10,22 +15,16 @@ msgstr "主程序信息"
 msgid "Installation Status"
 msgstr "安装状态"
 
-msgid "Compilation Time"
-msgstr "编译时间"
+msgid "Installed"
+msgstr "已安装"
 
-msgid "Admin Panel Information"
-msgstr "管理面板信息"
+msgid "Not installed"
+msgstr "未安装"
 
-msgid "Config dir path"
-msgstr "配置文件夹位置"
+msgid "Not available"
+msgstr "不可用"
 
-msgid "Lucky"
-msgstr "Lucky"
-
-msgid "ipv4/ipv6 portforward,ddns,reverseproxy proxy,wake on lan,IOT and more..."
-msgstr "IPv4/IPv6端口转发,动态域名服务,http/https反向代理，网络唤醒(可通过第三方物联网平台接入各大语音助手实现语音控制开关电脑)"
-
-msgid "Running state"
+msgid "Lucky Status"
 msgstr "运行状态"
 
 msgid "The Lucky service is running."
@@ -34,113 +33,173 @@ msgstr "已启动"
 msgid "The Lucky service is not running."
 msgstr "未启动"
 
-msgid "Lucky Status"
-msgstr "Lucky服务状态"
+msgid "Service is stopped"
+msgstr "服务未运行"
 
-msgid "Collecting data..."
-msgstr "收集数据..."
+msgid "Start"
+msgstr "启动"
 
-msgid "Set the Lucky access port"
-msgstr "设置访问端口"
+msgid "Stop"
+msgstr "停止"
 
-msgid "</br>For specific usage, see:"
-msgstr "</br>具体使用方法参见："
-
-msgid "Base Setting"
-msgstr "基本设置"
-
-msgid "Not installed"
-msgstr "没有安装"
-
-msgid "Installed"
-msgstr "已安装"
-
-msgid "Admin Panel Login HTTP URL"
-msgstr "管理后台登录地址(http)"
+msgid "Restart"
+msgstr "重启"
 
 msgid "Lucky Arch"
-msgstr "当前环境CPU架构"
-
-msgid "Lucky Status"
-msgstr "Lucky运行状态"
-
-msgid "Lucky Compilation time"
-msgstr "编译时间"
+msgstr "当前 CPU 架构"
 
 msgid "Lucky Version"
-msgstr "版本"
+msgstr "当前版本"
 
-msgid "Admin Panel Login Info"
-msgstr "管理后台登录信息"
+msgid "Check Latest Version"
+msgstr "查询最新"
 
-msgid "Account"
-msgstr "账号"
+msgid "Compilation Time"
+msgstr "编译时间"
 
-msgid "Password"
-msgstr "密码"
+msgid "Admin Panel Information"
+msgstr "管理面板信息"
 
 msgid "Admin Panel"
 msgstr "Lucky 后台管理"
 
-msgid "Open AdminURL"
-msgstr "打开后台管理"
+msgid "Admin Panel Login Info"
+msgstr "管理后台登录信息"
 
-msgid "Lucky Admin Http Port"
-msgstr "Lucky 后台HTTP端口"
+msgid "Default Auth"
+msgstr "默认账号/密码"
+
+msgid "Reset"
+msgstr "重置"
+
+msgid "Admin Web Port"
+msgstr "后台访问端口"
+
+msgid "Safe URL"
+msgstr "安全入口 (SafeURL)"
+
+msgid "Not set"
+msgstr "未设置"
 
 msgid "Change"
 msgstr "更改"
 
-msgid "portValueError"
-msgstr "端口值有误"
+msgid "Allow Internet Access"
+msgstr "外网访问后台"
 
-msgid "Get Lucky Latest Version"
-msgstr "获取Lucky最新版本"
+msgid "Allowed"
+msgstr "已允许"
 
-msgid "get latest version"
-msgstr "查询最新"
+msgid "Disallowed"
+msgstr "已禁止"
 
-msgid "Admin Safe URL"
-msgstr "安全入口"
+msgid "Enable"
+msgstr "启用"
 
-msgid "DefaultAuth"
-msgstr "默认登录账号密码"
-
-msgid "Reset 666 as admin account and password?"
-msgstr "重置账号密码为666?"
-
-msgid "update success"
-msgstr "修改成功"
-
-msgid "update failed"
-msgstr "修改失败"
-
-msgid "Allow Internet access"
-msgstr "外网登录后台"
-
-msgid "Are you sure Enalbe Internetaccess?"
-msgstr "确定要启用外网访问?"
-
-msgid "Are you sure Disable Internetaccess?"
-msgstr "确定要禁用外网访问?"
-
-msgid "are you sure stop lucky service?"
-msgstr "确定要停止Lucky服务?"
-
-msgid "are you sure start lucky service?"
-msgstr "确定要启动Lucky服务?"
-
-msgid "Config file path"
-msgstr "配置文件存放位置"
-
-msgid "The path to store the config file"
-msgstr "存放配置文件的位置"
-
-msgid "allow"
-msgstr "允许"
-
-msgid "not allow"
-msgstr "禁止"
+msgid "Disable"
+msgstr "禁用"
 
 msgid "Basic Settings"
 msgstr "基础设置"
+
+msgid "Enable Lucky service and start automatically on boot."
+msgstr "启用 Lucky 服务并设置为开机自动启动。"
+
+msgid "System Log"
+msgstr "系统日志"
+
+msgid "Forward Lucky stdout and stderr output to system log."
+msgstr "将 Lucky 标准输出与错误日志转发至 OpenWrt 系统日志。"
+
+msgid "Config dir path"
+msgstr "配置文件夹路径"
+
+msgid "The directory path used to store Lucky configuration files."
+msgstr "用于存放 Lucky 配置文件的目录路径。"
+
+msgid "Config directory path cannot be empty."
+msgstr "配置文件夹路径不能为空。"
+
+msgid "Config directory path must be an absolute path starting with \"/\"."
+msgstr "配置文件夹路径必须是以 \"/\" 开头的绝对路径。"
+
+msgid "Config directory path contains invalid characters."
+msgstr "配置文件夹路径包含非法字符。"
+
+msgid "Confirm Operation"
+msgstr "确认操作"
+
+msgid "Confirm action?"
+msgstr "确认执行该操作？"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Confirm"
+msgstr "确认"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Are you sure you want to start the Lucky service?"
+msgstr "确定要启动 Lucky 服务吗？"
+
+msgid "Are you sure you want to stop the Lucky service?"
+msgstr "确定要停止 Lucky 服务吗？"
+
+msgid "Are you sure you want to restart the Lucky service?"
+msgstr "确定要重启 Lucky 服务吗？"
+
+msgid "Applying changes"
+msgstr "正在应用更改"
+
+msgid "Processing Lucky service action, please wait..."
+msgstr "正在执行 Lucky 服务操作，请稍候..."
+
+msgid "Service operation failed: "
+msgstr "服务操作失败："
+
+msgid "Saving Configuration"
+msgstr "正在保存配置"
+
+msgid "Updating Lucky configuration, please wait..."
+msgstr "正在更新 Lucky 配置，请稍候..."
+
+msgid "Configuration updated successfully."
+msgstr "配置修改成功。"
+
+msgid "Update failed: "
+msgstr "修改失败："
+
+msgid "Command execution failed."
+msgstr "命令执行失败。"
+
+msgid "Change Admin Web Port"
+msgstr "修改后台访问端口"
+
+msgid "Enter a new HTTP/HTTPS listening port (1 - 65535) for the Lucky admin panel:"
+msgstr "请输入新的 Lucky 管理后台监听端口（1 - 65535）："
+
+msgid "Invalid port number. Please enter an integer between 1 and 65535."
+msgstr "端口号无效，请输入 1 到 65535 之间的整数。"
+
+msgid "Change Safe URL"
+msgstr "修改安全入口"
+
+msgid "Leave empty to disable Safe URL, or enter a custom entry path starting with \"/\" (e.g. /lucky):"
+msgstr "留空则关闭安全入口，或输入以 \"/\" 开头的自定义路径（例如 /lucky）："
+
+msgid "Safe URL must start with \"/\" and contain only valid URL characters, or be left empty to disable."
+msgstr "安全入口必须以 \"/\" 开头且仅包含合法 URL 字符，或留空以禁用。"
+
+msgid "Reset Login Credentials"
+msgstr "重置登录凭证"
+
+msgid "Reset both admin account and password to \"666\"?"
+msgstr "确定将管理后台账号和密码均重置为 \"666\" 吗？"
+
+msgid "Are you sure you want to enable external (WAN) access to the Lucky admin panel?"
+msgstr "确定要开启外网（WAN）访问 Lucky 管理后台吗？"
+
+msgid "Are you sure you want to disable external (WAN) access to the Lucky admin panel?"
+msgstr "确定要关闭外网（WAN）访问 Lucky 管理后台吗？"
