@@ -3,52 +3,25 @@ set -euo pipefail
 
 cd /builder
 
-TARGET="${TARGET:-x86/64}"
-VERSION_PATH="${VERSION_PATH:-snapshots}"
-DOWNLOAD_FILE="${DOWNLOAD_FILE:-sdk-.*x86_64.tar.[xz|zst]}"
-DOWNLOAD_PATH="${VERSION_PATH}/targets/${TARGET}"
-CDN_HOST="${OPENWRT_CDN_URL:-https://downloads.cdn.openwrt.org}"
-FALLBACK_HOST="https://downloads.openwrt.org"
 BUILD_LUCI="${BUILD_LUCI:-0}"
 
-fetch_with_fallback() {
-	local rel_path="$1"
-	local out_file="$2"
-	if curl -fSL --connect-timeout 10 --retry 3 --retry-delay 2 "${CDN_HOST}/${rel_path}" -o "$out_file"; then
-		return 0
-	fi
-	echo "CDN 下载失败，回退至官方源: ${FALLBACK_HOST}/${rel_path}"
-	curl -fSL --connect-timeout 15 --retry 5 --retry-delay 3 "${FALLBACK_HOST}/${rel_path}" -o "$out_file"
-}
-
 if [ -f setup.sh ]; then
-	echo "::group::Prepare OpenWrt SDK (${TARGET} - ${VERSION_PATH})"
+	echo "::group::Extract & Verify OpenWrt SDK"
 	cached_tar="$(find /sdk-cache -maxdepth 1 -type f -name '*sdk-*.tar.*' | head -n 1 || true)"
-	if [ -n "$cached_tar" ] && [ -f /sdk-cache/sha256sums_min ]; then
-		echo "命中 GitHub Actions SDK 缓存: $(basename "$cached_tar")"
-		(cd /sdk-cache && sha256sum -c sha256sums_min)
-		rm -rf /builder/keys/
-	else
-		echo "未命中缓存，正在从高速 CDN (${CDN_HOST}) 拉取 OpenWrt SDK..."
-		rm -rf /sdk-cache/*
-		fetch_with_fallback "${DOWNLOAD_PATH}/sha256sums" sha256sums
-		fetch_with_fallback "${DOWNLOAD_PATH}/sha256sums.asc" sha256sums.asc
-
-		gpg --import /builder/keys/*.asc && rm -rf /builder/keys/
-		gpg --with-fingerprint --verify sha256sums.asc sha256sums
-
-		file_name="$(grep "$DOWNLOAD_FILE" sha256sums | cut -d "*" -f 2 | head -n 1)"
-		if [ -z "$file_name" ]; then
-			echo "错误: 未在 sha256sums 中匹配到 SDK 压缩包 ($DOWNLOAD_FILE)" >&2
-			exit 1
-		fi
-
-		fetch_with_fallback "${DOWNLOAD_PATH}/${file_name}" "/sdk-cache/${file_name}"
-		grep "$file_name" sha256sums > /sdk-cache/sha256sums_min
-		(cd /sdk-cache && sha256sum -c sha256sums_min)
-		rm -f sha256sums sha256sums.asc
-		cached_tar="/sdk-cache/${file_name}"
+	if [ -z "$cached_tar" ] || [ ! -f /sdk-cache/sha256sums_min ]; then
+		echo "错误: /sdk-cache 中未找到预下载的 OpenWrt SDK 压缩包。" >&2
+		exit 1
 	fi
+
+	if [ -f /sdk-cache/sha256sums ] && [ -f /sdk-cache/sha256sums.asc ] && [ -d /builder/keys ]; then
+		gpg --import /builder/keys/*.asc
+		gpg --with-fingerprint --verify /sdk-cache/sha256sums.asc /sdk-cache/sha256sums
+		rm -f /sdk-cache/sha256sums /sdk-cache/sha256sums.asc
+	fi
+	rm -rf /builder/keys/
+
+	echo "校验 SDK 完整性: $(basename "$cached_tar")"
+	(cd /sdk-cache && sha256sum -c sha256sums_min)
 
 	tar xf "$cached_tar" --strip=1 --no-same-owner -C /builder
 	rm -f setup.sh

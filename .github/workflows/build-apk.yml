@@ -69,7 +69,7 @@ jobs:
     needs: check-update
     if: needs.check-update.outputs.should_build == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -135,11 +135,62 @@ jobs:
             echo "release_url=${LUCKY_RELEASE_ROOT}/${LUCKY_RELEASE_DIR}/"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build packages in OpenWrt SDK
+      - name: Prefetch SDK archive & build packages
         shell: bash
         run: |
           set -euo pipefail
+          IMAGE="ghcr.io/openwrt/sdk:${{ matrix.sdk_arch }}"
+          docker pull "$IMAGE"
+
           mkdir -p .sdk-cache artifacts_out
+          cached_tar="$(find .sdk-cache -maxdepth 1 -type f -name '*sdk-*.tar.*' | head -n 1 || true)"
+
+          if [ -z "$cached_tar" ] || [ ! -f .sdk-cache/sha256sums_min ]; then
+            echo "SDK 缓存未命中，使用 aria2c 16 线程并发拉取 SDK (${{ matrix.sdk_arch }})..."
+            if ! command -v aria2c >/dev/null 2>&1; then
+              sudo apt-get update && sudo apt-get install -y aria2
+            fi
+            rm -rf .sdk-cache/*
+
+            eval "$(python3 - "$IMAGE" <<'PY'
+          import json, shlex, subprocess, sys
+          info = json.loads(subprocess.check_output(["docker", "image", "inspect", sys.argv[1]]))[0]
+          env = dict(item.split("=", 1) for item in info["Config"]["Env"] if "=" in item)
+          for k in ("TARGET", "VERSION_PATH", "DOWNLOAD_FILE"):
+              if k in env:
+                  print(f"{k}={shlex.quote(env[k])}")
+          PY
+            )"
+
+            DOWNLOAD_PATH="${VERSION_PATH}/targets/${TARGET}"
+            curl -fSL --connect-timeout 10 --retry 5 "https://downloads.cdn.openwrt.org/${DOWNLOAD_PATH}/sha256sums" -o .sdk-cache/sha256sums
+            curl -fSL --connect-timeout 10 --retry 5 "https://downloads.cdn.openwrt.org/${DOWNLOAD_PATH}/sha256sums.asc" -o .sdk-cache/sha256sums.asc
+
+            file_name="$(grep "$DOWNLOAD_FILE" .sdk-cache/sha256sums | cut -d '*' -f 2 | head -n 1)"
+            if [ -z "$file_name" ]; then
+              echo "错误: 未在 sha256sums 中找到匹配的 SDK ($DOWNLOAD_FILE)" >&2
+              exit 1
+            fi
+
+            aria2c \
+              --max-connection-per-server=16 \
+              --split=16 \
+              --min-split-size=1M \
+              --max-tries=10 \
+              --retry-wait=3 \
+              --summary-interval=10 \
+              --console-log-level=warn \
+              -d .sdk-cache \
+              -o "$file_name" \
+              "https://downloads.cdn.openwrt.org/${DOWNLOAD_PATH}/${file_name}" \
+              "https://downloads.openwrt.org/${DOWNLOAD_PATH}/${file_name}"
+
+            grep "$file_name" .sdk-cache/sha256sums > .sdk-cache/sha256sums_min
+            (cd .sdk-cache && sha256sum -c sha256sums_min)
+          else
+            echo "已命中本地 SDK 缓存: $(basename "$cached_tar")"
+          fi
+
           host_uid="$(id -u)"
           host_gid="$(id -g)"
           restore_perms() {
@@ -154,7 +205,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/feed" \
             -v "$GITHUB_WORKSPACE/.sdk-cache:/sdk-cache" \
             -v "$GITHUB_WORKSPACE/artifacts_out:/artifacts" \
-            "ghcr.io/openwrt/sdk:${{ matrix.sdk_arch }}" \
+            "$IMAGE" \
             bash /feed/scripts/build-openwrt-apk.sh
 
       - name: Collect APK files
