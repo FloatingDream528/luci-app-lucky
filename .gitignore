@@ -1,7 +1,9 @@
 .lucky-release.env
+.sdk-cache/
 dl/
 lucky/dl/
 bin/
 artifacts/
+artifacts_out/
 release-upload/
 release-notes.md

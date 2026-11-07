@@ -33,7 +33,7 @@ jobs:
       latest_version: ${{ steps.check.outputs.latest_version }}
     steps:
       - name: Checkout scripts
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           sparse-checkout: |
             scripts
@@ -49,7 +49,6 @@ jobs:
 
           bash scripts/prepare-latest-lucky.sh --check-only
 
-          # Read outputs written by prepare-latest-lucky.sh --check-only
           LATEST_TAG="$(grep '^latest_tag=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2-)"
           RELEASE_TAG="$(grep '^release_tag=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2-)"
 
@@ -79,21 +78,27 @@ jobs:
           - arch: x86_64
             sdk_arch: x86_64-25.12.6
             core_arch: x86_64
+            build_luci: "1"
           - arch: aarch64_generic
             sdk_arch: aarch64_generic-25.12.6
             core_arch: arm64
+            build_luci: "0"
           - arch: arm_cortex-a7_neon-vfpv4
             sdk_arch: arm_cortex-a7_neon-vfpv4-25.12.6
             core_arch: armv7
+            build_luci: "0"
           - arch: mips_24kc
             sdk_arch: mips_24kc-25.12.6
             core_arch: mips_softfloat
+            build_luci: "0"
           - arch: mipsel_24kc
             sdk_arch: mipsel_24kc-25.12.6
             core_arch: mipsle_softfloat
+            build_luci: "0"
           - arch: i386_pentium4
             sdk_arch: i386_pentium4-25.12.6
             core_arch: i386
+            build_luci: "0"
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
@@ -102,7 +107,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Cache OpenWrt SDK archive
+        uses: actions/cache@v6
+        with:
+          path: .sdk-cache
+          key: openwrt-sdk-archive-v1-${{ matrix.sdk_arch }}
 
       - name: Prepare latest Lucky core
         shell: bash
@@ -124,12 +135,27 @@ jobs:
             echo "release_url=${LUCKY_RELEASE_ROOT}/${LUCKY_RELEASE_DIR}/"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build packages
-        uses: openwrt/gh-action-sdk@v11
-        env:
-          ARCH: ${{ matrix.sdk_arch }}
-          FEEDNAME: lucky
-          PACKAGES: lucky luci-app-lucky
+      - name: Build packages in OpenWrt SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .sdk-cache artifacts_out
+          host_uid="$(id -u)"
+          host_gid="$(id -g)"
+          restore_perms() {
+            sudo chown -R "${host_uid}:${host_gid}" .sdk-cache artifacts_out "$GITHUB_WORKSPACE"
+          }
+          trap restore_perms EXIT
+
+          sudo chown -R 1000:1000 .sdk-cache artifacts_out "$GITHUB_WORKSPACE"
+
+          docker run --rm \
+            -e BUILD_LUCI="${{ matrix.build_luci }}" \
+            -v "$GITHUB_WORKSPACE:/feed" \
+            -v "$GITHUB_WORKSPACE/.sdk-cache:/sdk-cache" \
+            -v "$GITHUB_WORKSPACE/artifacts_out:/artifacts" \
+            "ghcr.io/openwrt/sdk:${{ matrix.sdk_arch }}" \
+            bash /feed/scripts/build-openwrt-apk.sh
 
       - name: Collect APK files
         shell: bash
@@ -141,11 +167,8 @@ jobs:
           cp -v scripts/install-apk.sh "artifacts/$arch/install-apk.sh"
           chmod 0755 "artifacts/$arch/install-apk.sh"
 
-          find bin -type f \( \
-            -name "lucky-*.apk" -o \
-            -name "luci-app-lucky-*.apk" -o \
-            -name "luci-i18n-lucky-zh-cn-*.apk" \
-          \) -print -exec cp -v {} "artifacts/$arch/" \;
+          find artifacts_out/bin -type f -name "lucky-*.apk" \
+            -print -exec cp -v {} "artifacts/$arch/" \;
 
           for apk in "artifacts/$arch"/*.apk; do
             name="$(basename "$apk")"
@@ -154,10 +177,26 @@ jobs:
           done
 
           test -n "$(find "artifacts/$arch" -type f -name 'lucky-*.apk' -print -quit)"
-          test -n "$(find "artifacts/$arch" -type f -name 'luci-app-lucky-*.apk' -print -quit)"
+
+          if [ "${{ matrix.build_luci }}" = "1" ]; then
+            mkdir -p "artifacts/noarch"
+            find artifacts_out/bin -type f \( \
+              -name "luci-app-lucky-*.apk" -o \
+              -name "luci-i18n-lucky-zh-cn-*.apk" \
+            \) -print -exec cp -v {} "artifacts/noarch/" \;
+
+            for apk in "artifacts/noarch"/*.apk; do
+              name="$(basename "$apk")"
+              clean_name="$(printf '%s' "$name" | sed -E 's/-r[0-9]+(\.apk)$/\1/')"
+              [ "$name" = "$clean_name" ] || mv -v "$apk" "artifacts/noarch/$clean_name"
+            done
+
+            test -n "$(find "artifacts/noarch" -type f -name 'luci-app-lucky-*.apk' -print -quit)"
+            test -n "$(find "artifacts/noarch" -type f -name 'luci-i18n-lucky-zh-cn-*.apk' -print -quit)"
+          fi
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lucky-${{ matrix.arch }}-apk
           path: artifacts/*
@@ -173,7 +212,7 @@ jobs:
 
     steps:
       - name: Download all APK artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release-upload
           pattern: lucky-*-apk
@@ -184,9 +223,12 @@ jobs:
         run: |
           set -euo pipefail
           cd release-upload
+          test -d noarch
           for dir in */ ; do
             arch_dir="${dir%/}"
+            [ "$arch_dir" = "noarch" ] && continue
             if [ -d "$arch_dir" ]; then
+              cp -v noarch/*.apk "$arch_dir/"
               echo "Zipping architecture: $arch_dir"
               zip -j "lucky-${{ needs.build.outputs.version }}-${arch_dir}.zip" "$arch_dir"/*
             fi
@@ -209,7 +251,7 @@ jobs:
             echo 'sh -c "$(wget -qO- https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/online-install.sh)"'
             echo '```'
             echo
-            echo "### 方式二：下载对应架构 Zip 解压上传至 `/tmp` 后安装"
+            echo "### 方式二：下载对应架构 Zip 解压上传至 \`/tmp\` 后安装"
             echo
             echo '```sh'
             echo 'cd /tmp'
