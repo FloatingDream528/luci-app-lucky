@@ -31,25 +31,23 @@ fi
 git config --global --add safe.directory /feed || true
 
 echo "::group::Configure & Update Feeds (BUILD_LUCI=${BUILD_LUCI})"
-sed \
-	-e 's,https://git.openwrt.org/feed/,https://github.com/openwrt/,' \
-	-e 's,https://git.openwrt.org/openwrt/,https://github.com/openwrt/,' \
-	-e 's,https://git.openwrt.org/project/,https://github.com/openwrt/,' \
-	feeds.conf.default > feeds.conf.all
-
 if [ "$BUILD_LUCI" = "1" ]; then
-	grep -E '^src-[^[:space:]]+[[:space:]]+(base|packages|luci)[[:space:]]' feeds.conf.all > feeds.conf
+	sed \
+		-e 's,https://git.openwrt.org/feed/,https://github.com/openwrt/,' \
+		-e 's,https://git.openwrt.org/openwrt/,https://github.com/openwrt/,' \
+		-e 's,https://git.openwrt.org/project/,https://github.com/openwrt/,' \
+		feeds.conf.default > feeds.conf.all
+	grep -E '^src-[^[:space:]]+([[:space:]]+--[^[:space:]]+)*[[:space:]]+(packages|luci)[[:space:]]' feeds.conf.all > feeds.conf
+	rm -f feeds.conf.all
 	echo "src-link lucky /feed" >> feeds.conf
 	PACKAGES="lucky luci-app-lucky"
 else
-	grep -E '^src-[^[:space:]]+[[:space:]]+base[[:space:]]' feeds.conf.all > feeds.conf
 	rm -rf /tmp/lucky-feed
 	mkdir -p /tmp/lucky-feed
 	cp -a /feed/lucky /tmp/lucky-feed/
-	echo "src-link lucky /tmp/lucky-feed" >> feeds.conf
+	echo "src-link lucky /tmp/lucky-feed" > feeds.conf
 	PACKAGES="lucky"
 fi
-rm -f feeds.conf.all
 
 cat feeds.conf
 ./scripts/feeds update -a
